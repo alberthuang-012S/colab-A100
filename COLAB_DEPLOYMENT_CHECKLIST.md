@@ -8,14 +8,15 @@ This checklist prepares the existing Phase 1 launcher for a clean Google Colab r
 - [x] Large model files, generated outputs, user assets, credentials, logs, and runtime caches are excluded by `.gitignore`.
 - [x] The notebook keeps the GitHub checkout at `/content/012s-image-system` and supports shared Drive or ephemeral storage roots.
 - [x] Publish the initial commit to GitHub and configure the repository as `origin`.
-- [ ] Complete the Phase 1A.1 T4 pipeline smoke run. A T4 checks the pipeline only; it is not FLUX-on-A100 verification.
+- [x] Complete the Phase 1A.1 T4 pipeline smoke run with SDXL, PNG, and metadata. A T4 checks the pipeline only; it is not FLUX-on-A100 verification.
+- [ ] Verify that the Colab browser proxy opens from an authorized browser session. The local ComfyUI API worked; Chrome blocked/denied the external proxy URL in this run.
 - [ ] Repeat FLUX generation on a real A100 runtime before claiming FLUX-on-A100 verification.
 
 ## GitHub repository
 
 - [x] Repository: [alberthuang-012S/colab-A100](https://github.com/alberthuang-012S/colab-A100), with `master` tracking `origin/master`.
 - [x] Initial commit `82e6ff8` pushed successfully.
-- [ ] Open `012S_Image_System.ipynb` in Google Colab and run it in a fresh GPU runtime.
+- [x] Open `012S_Image_System.ipynb` in Google Colab and run the T4 ephemeral/SDXL smoke test.
 
 ## Colab runtime launch
 
@@ -44,7 +45,18 @@ For the Phase 1A.1 T4 smoke test, set Step 1 overrides to ephemeral storage, FLU
 ## Risks before first Colab run
 
 - The first Colab session used a Tesla T4; A100 was unavailable. Drive mount failed with `credential propagation was unsuccessful`. Use ephemeral mode to continue the pipeline smoke test.
-- ComfyUI, SDXL generation, and the Colab proxy still need a successful smoke run before `PIPELINE VERIFIED` can be claimed.
+- T4 pipeline smoke passed through the local ComfyUI API and generated PNG plus JSON metadata. The external proxy link was issued, but Chrome reported `ERR_BLOCKED_BY_CLIENT` on the notebook link and HTTP 403 in a separately opened tab. The browser proxy is not verified in this browser session.
 - The default FLUX checkpoint is about 17.2 GB (decimal), remains the formal main model, and is enabled by default. The optional SDXL workflow is only for the T4 pipeline smoke test; it does not change the default model.
 - ComfyUI is fast-forwarded from its upstream default branch and its requirements are installed at launch time. Upstream changes can affect first-run behavior.
 - Private GitHub repositories need working Git authentication in the Colab runtime. Never paste a credential-bearing clone URL; use an approved authentication method.
+
+## Phase 1A.1 — T4 runtime verification (2026-09-29)
+
+- **Runtime:** Colab Python 3.13.15; PyTorch 2.11.0+cu128; torch CUDA 12.8; Tesla T4, 14.56 GiB VRAM. The environment report was `READY`.
+- **Storage:** ephemeral mode at `/content/012s-runtime`; Drive displayed `NOT REQUIRED` and was not mounted. The earlier Drive mount issue was `credential propagation was unsuccessful`; no OAuth bypass or credential storage was used.
+- **ComfyUI:** cloned from upstream at revision `a7169322485d0049380fb207fa17e9fb3ec40486`; requirements installed; local `/system_stats` API responded on port 8188. The Colab proxy URL was returned, but opening it from Chrome was blocked/denied (`ERR_BLOCKED_BY_CLIENT` / HTTP 403).
+- **SDXL:** `sd_xl_base_1.0.safetensors` downloaded to the ephemeral model folder; 6,938,078,334 bytes; the downloader validated the configured SHA-256 `31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b`.
+- **Generation:** `text-to-image-sdxl`, 1024×1024, batch 1, seed `20260929`, 12 steps, guidance 6.0. The call took 50.8 seconds including checkpoint load and generation; observed peak GPU memory was 10.38 GiB. ComfyUI did not emit a separately parseable checkpoint-load duration in its log.
+- **Output:** `/content/012s-runtime/outputs/draft/image_text-to-image-sdxl_20260929_seed20260929.png` (880,105 bytes) and same-name `.json` sidecar. Metadata records the exact prompt, seed, SDXL model/revision and SHA, workflow/version, dimensions, steps, guidance, GPU, and timestamp.
+- **FLUX/A100:** FLUX was disabled for the T4 smoke run because 14.56 GiB is below the 20 GiB gate. No FLUX-on-A100 generation was attempted; it remains unverified.
+- **Storage lifetime:** the output and model are in ephemeral runtime storage and disappear when that runtime ends.
