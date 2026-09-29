@@ -15,7 +15,7 @@ A modular Google Colab launcher for ComfyUI, designed around an NVIDIA A100 runt
 
 1. Publish or clone this repository, then open [012S_Image_System.ipynb](012S_Image_System.ipynb) in Google Colab.
 2. In **Runtime → Change runtime type**, select a GPU runtime. Choose A100 when Colab offers it.
-3. Run the notebook from the top. The first cell mounts Drive and fetches the project scripts. Because this checkout has no Git remote configured yet, paste the repository URL once when prompted; it is saved as a non-secret URL in Drive for later runtime restarts. Do not include credentials in that URL.
+3. Run the notebook from the top. The first cell mounts Drive and fetches the project scripts from `https://github.com/alberthuang-012S/colab-A100.git`. The URL is saved in Drive for later runtime restarts. To use a fork, set `012S_REPOSITORY_URL` before running that cell. Do not put credentials in the URL.
 4. The environment check stops before model downloads if CUDA GPU support or Drive is unavailable.
 5. The notebook installs only the model categories selected in `config/system_config.json`: FLUX is on by default; SDXL is off. Existing valid files are skipped. Missing model files are stored under `MyDrive/012s-image-system/models/`.
 6. Open the ComfyUI link shown by the final setup cell. To generate with one of the managed workflows, call `run_012s_workflow(...)` in the notebook. Examples are included beside the helper function.

@@ -8,7 +8,7 @@ The notebook assumes a Google Colab GPU runtime and a Google account with Drive 
 
 1. Open `012S_Image_System.ipynb` in Colab and choose **Runtime → Change runtime type → GPU**.
 2. Run cells from the top. The first cell mounts Drive, creates the 012S Drive layout, and checks whether project scripts are already present.
-3. If scripts are absent, provide the repository URL once. It is saved without credentials in the Drive metadata folder, so a fresh runtime can clone again without another prompt. This repository was not given a Git remote in the initial checkout. For private source repositories, use your existing Git credentials or a repository access method approved by your organization.
+3. If scripts are absent, the notebook clones `https://github.com/alberthuang-012S/colab-A100.git` and saves the URL without credentials in the Drive metadata folder, so a fresh runtime can clone again. To use a fork, set `012S_REPOSITORY_URL` before running the cell. For private source repositories, use your existing Git credentials or an approved repository access method.
 4. Read the Environment Report. If status is not `READY`, stop and select a GPU runtime or reconnect Drive before continuing.
 5. ComfyUI is cloned on a fresh runtime or fast-forwarded when its checkout exists. Dependencies are installed for that runtime.
 6. Review model switches in `config/system_config.json`. The model check prints whether each selected checkpoint is already present. The next cell downloads only missing/invalid selected files.
