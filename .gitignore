@@ -1,0 +1,39 @@
+# Model weights and generated/user data stay out of Git.
+models/
+outputs/
+assets/
+*.safetensors
+*.ckpt
+*.bin
+*.pt
+*.pth
+*.onnx
+*.part
+
+# Credentials and local runtime state.
+.env
+.env.*
+!.env.example
+tokens/
+token/
+tokens.*
+token.*
+secrets/
+secrets.*
+*.token
+*.pem
+*.key
+credentials.json
+
+# Logs, notebook state, and Python environments/cache.
+logs/
+.ipynb_checkpoints/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+
+# Common local operating-system files.
+.DS_Store
+Thumbs.db

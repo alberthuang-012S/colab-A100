@@ -1,0 +1,7 @@
+{
+  "Square": {"width": 1024, "height": 1024},
+  "Instagram Portrait": {"width": 1024, "height": 1280},
+  "Vertical Advertising": {"width": 1024, "height": 1536},
+  "Landscape Banner": {"width": 1536, "height": 1024},
+  "Wide Banner": {"width": 1536, "height": 768}
+}

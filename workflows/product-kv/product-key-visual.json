@@ -1,0 +1,12 @@
+{
+  "1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "flux1-schnell-fp8.safetensors"}},
+  "2": {"class_type": "CLIPTextEncode", "inputs": {"text": "Premium commercial product photography, a bright refined studio set with generous negative space", "clip": ["1", 1]}},
+  "3": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["1", 1]}},
+  "4": {"class_type": "EmptySD3LatentImage", "inputs": {"width": 1024, "height": 1024, "batch_size": 1}},
+  "5": {"class_type": "KSampler", "inputs": {"model": ["1", 0], "positive": ["2", 0], "negative": ["3", 0], "latent_image": ["4", 0], "seed": 12345, "steps": 4, "cfg": 1.0, "sampler_name": "euler", "scheduler": "simple", "denoise": 1.0}},
+  "6": {"class_type": "VAEDecode", "inputs": {"samples": ["5", 0], "vae": ["1", 2]}},
+  "8": {"class_type": "LoadImage", "inputs": {"image": "012s_product.png"}},
+  "9": {"class_type": "InvertMask", "inputs": {"mask": ["8", 1]}},
+  "10": {"class_type": "ImageCompositeMasked", "inputs": {"destination": ["6", 0], "source": ["8", 0], "x": 0, "y": 0, "resize_source": false, "mask": ["9", 0]}},
+  "11": {"class_type": "SaveImage", "inputs": {"images": ["10", 0], "filename_prefix": "012S/product-kv"}}
+}

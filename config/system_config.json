@@ -1,0 +1,46 @@
+{
+  "project_name": "012S AI Image Generation System",
+  "project_version": "1.0.0",
+  "workflow_version": "1.0.0",
+  "timezone": "Asia/Taipei",
+  "drive_folder_name": "012s-image-system",
+  "drive_mount_point": "/content/drive",
+  "drive_root": "/content/drive/MyDrive/012s-image-system",
+  "comfyui_dir": "/content/ComfyUI",
+  "comfyui_repo_url": "https://github.com/Comfy-Org/ComfyUI.git",
+  "comfyui_host": "0.0.0.0",
+  "comfyui_port": 8188,
+  "install_flux": true,
+  "install_sdxl": false,
+  "download_timeout_seconds": 120,
+  "model_retry_count": 3,
+  "model_sha256": {
+    "flux1-schnell-fp8.safetensors": "ead426278b49030e9da5df862994f25ce94ab2ee4df38b556ddddb3db093bf72",
+    "sd_xl_base_1.0.safetensors": "31e35c80fc4829d14f90153f4c74cd59c90b779f6afe05a74cd6120b893f7e5b"
+  },
+  "output_default_category": "draft",
+  "product_input_name": "012s_product.png",
+  "mask_input_name": "012s_mask.png",
+  "models": {
+    "flux": [
+      {
+        "filename": "flux1-schnell-fp8.safetensors",
+        "url": "https://huggingface.co/Comfy-Org/flux1-schnell/resolve/0cb207e7e753453ef479ae266caf7c1ab364e363/flux1-schnell-fp8.safetensors?download=true",
+        "revision": "0cb207e7e753453ef479ae266caf7c1ab364e363",
+        "min_size_bytes": 17236328572,
+        "expected_size_bytes": 17236328572,
+        "auth_required_hint": "If Hugging Face returns 401/403, set HF_TOKEN in Colab Secrets or the environment and rerun model_manager.py."
+      }
+    ],
+    "sdxl": [
+      {
+        "filename": "sd_xl_base_1.0.safetensors",
+        "url": "https://huggingface.co/stabilityai/stable-diffusion-xl-base-1.0/resolve/ce8cd4d6569112b0c0ad48cdd18560fe0bcc7a48/sd_xl_base_1.0.safetensors?download=true",
+        "revision": "ce8cd4d6569112b0c0ad48cdd18560fe0bcc7a48",
+        "min_size_bytes": 6938078334,
+        "expected_size_bytes": 6938078334,
+        "auth_required_hint": "If Hugging Face returns 401/403, accept the model license and set HF_TOKEN in Colab Secrets or the environment."
+      }
+    ]
+  }
+}

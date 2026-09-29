@@ -1,0 +1,136 @@
+{
+  "registry_version": "1.0.0",
+  "workflows": {
+    "text-to-image": {
+      "title": "Text to Image (FLUX.1-schnell)",
+      "category": "text-to-image",
+      "api_file": "text-to-image/flux-schnell.json",
+      "model": "FLUX.1-schnell FP8",
+      "model_filename": "flux1-schnell-fp8.safetensors",
+      "model_revision": "0cb207e7e753453ef479ae266caf7c1ab364e363",
+      "nodes": {
+        "prompt": {"id": "2", "input": "text"},
+        "negative_prompt": {"id": "3", "input": "text"},
+        "width": {"id": "4", "input": "width"},
+        "height": {"id": "4", "input": "height"},
+        "seed": {"id": "5", "input": "seed"},
+        "steps": {"id": "5", "input": "steps"},
+        "guidance": {"id": "5", "input": "cfg"}
+      },
+      "sampler": "euler",
+      "scheduler": "simple",
+      "input_files": {},
+      "supports_negative_prompt": false
+    },
+    "product-kv": {
+      "title": "Product Key Visual (transparent product composite)",
+      "category": "product-kv",
+      "api_file": "product-kv/product-key-visual.json",
+      "model": "FLUX.1-schnell FP8",
+      "model_filename": "flux1-schnell-fp8.safetensors",
+      "model_revision": "0cb207e7e753453ef479ae266caf7c1ab364e363",
+      "nodes": {
+        "prompt": {"id": "2", "input": "text"},
+        "negative_prompt": {"id": "3", "input": "text"},
+        "width": {"id": "4", "input": "width"},
+        "height": {"id": "4", "input": "height"},
+        "seed": {"id": "5", "input": "seed"},
+        "steps": {"id": "5", "input": "steps"},
+        "guidance": {"id": "5", "input": "cfg"},
+        "input_image": {"id": "8", "input": "image"}
+      },
+      "sampler": "euler",
+      "scheduler": "simple",
+      "input_files": {"input_image": "product"},
+      "supports_negative_prompt": false,
+      "preserve_product_pixels": true
+    },
+    "img2img": {
+      "title": "Image to Image (FLUX.1-schnell)",
+      "category": "img2img",
+      "api_file": "img2img/flux-img2img.json",
+      "model": "FLUX.1-schnell FP8",
+      "model_filename": "flux1-schnell-fp8.safetensors",
+      "model_revision": "0cb207e7e753453ef479ae266caf7c1ab364e363",
+      "nodes": {
+        "prompt": {"id": "2", "input": "text"},
+        "negative_prompt": {"id": "3", "input": "text"},
+        "seed": {"id": "6", "input": "seed"},
+        "steps": {"id": "6", "input": "steps"},
+        "guidance": {"id": "6", "input": "cfg"},
+        "denoise": {"id": "6", "input": "denoise"},
+        "input_image": {"id": "4", "input": "image"}
+      },
+      "sampler": "euler",
+      "scheduler": "simple",
+      "input_files": {"input_image": "product"},
+      "supports_negative_prompt": false
+    },
+    "inpaint": {
+      "title": "Inpaint (SDXL base)",
+      "category": "inpaint",
+      "api_file": "inpaint/sdxl-inpaint.json",
+      "model": "Stable Diffusion XL 1.0 base",
+      "model_filename": "sd_xl_base_1.0.safetensors",
+      "model_revision": "ce8cd4d6569112b0c0ad48cdd18560fe0bcc7a48",
+      "nodes": {
+        "prompt": {"id": "2", "input": "text"},
+        "negative_prompt": {"id": "3", "input": "text"},
+        "seed": {"id": "8", "input": "seed"},
+        "steps": {"id": "8", "input": "steps"},
+        "guidance": {"id": "8", "input": "cfg"},
+        "input_image": {"id": "4", "input": "image"},
+        "input_mask": {"id": "5", "input": "image"}
+      },
+      "sampler": "dpmpp_2m",
+      "scheduler": "karras",
+      "input_files": {"input_image": "product", "input_mask": "mask"},
+      "supports_negative_prompt": true
+    },
+    "outpaint": {
+      "title": "Outpaint (SDXL base)",
+      "category": "outpaint",
+      "api_file": "outpaint/sdxl-outpaint.json",
+      "model": "Stable Diffusion XL 1.0 base",
+      "model_filename": "sd_xl_base_1.0.safetensors",
+      "model_revision": "ce8cd4d6569112b0c0ad48cdd18560fe0bcc7a48",
+      "nodes": {
+        "prompt": {"id": "2", "input": "text"},
+        "negative_prompt": {"id": "3", "input": "text"},
+        "seed": {"id": "7", "input": "seed"},
+        "steps": {"id": "7", "input": "steps"},
+        "guidance": {"id": "7", "input": "cfg"},
+        "input_image": {"id": "4", "input": "image"}
+      },
+      "sampler": "dpmpp_2m",
+      "scheduler": "karras",
+      "input_files": {"input_image": "product"},
+      "supports_negative_prompt": true,
+      "padding_node": "5"
+    },
+    "batch": {
+      "title": "Batch Product Variations (4/8/16 seeds)",
+      "category": "batch",
+      "api_file": "batch/product-batch-variation.json",
+      "model": "FLUX.1-schnell FP8",
+      "model_filename": "flux1-schnell-fp8.safetensors",
+      "model_revision": "0cb207e7e753453ef479ae266caf7c1ab364e363",
+      "nodes": {
+        "prompt": {"id": "2", "input": "text"},
+        "negative_prompt": {"id": "3", "input": "text"},
+        "width": {"id": "4", "input": "width"},
+        "height": {"id": "4", "input": "height"},
+        "seed": {"id": "5", "input": "seed"},
+        "steps": {"id": "5", "input": "steps"},
+        "guidance": {"id": "5", "input": "cfg"},
+        "input_image": {"id": "8", "input": "image"}
+      },
+      "sampler": "euler",
+      "scheduler": "simple",
+      "input_files": {"input_image": "product"},
+      "supports_negative_prompt": false,
+      "preserve_product_pixels": true,
+      "count_options": [4, 8, 16]
+    }
+  }
+}
