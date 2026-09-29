@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import tempfile
 import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.drive_manager import LAYOUT, ensure_drive_layout, get_drive_root, sync_workflow_templates
-from scripts.environment_check import detect_environment
+from scripts.drive_manager import (
+    LAYOUT, ensure_drive_layout, ensure_storage_layout, get_drive_root,
+    get_storage_mode, get_storage_root, sync_workflow_templates,
+)
+from scripts.environment_check import detect_environment, format_report
 from scripts.metadata_manager import build_metadata
 from scripts.model_manager import model_cached_valid, model_is_valid
 from scripts.output_manager import make_output_filename, write_output_bundle
@@ -22,6 +26,7 @@ class ConfigTests(unittest.TestCase):
         config = load_config(DEFAULT_CONFIG)
         self.assertTrue(config["install_flux"])
         self.assertFalse(config["install_sdxl"])
+        self.assertEqual(config["storage_mode"], "drive")
 
 
 class EnvironmentTests(unittest.TestCase):
@@ -45,6 +50,69 @@ class EnvironmentTests(unittest.TestCase):
         self.assertEqual(report.gpu_name, "NVIDIA A100-SXM4-40GB")
         self.assertAlmostEqual(report.vram_gb or 0, 40.0, places=1)
         self.assertTrue(report.torch_cuda_available)
+
+    def test_ephemeral_mode_is_ready_without_drive(self) -> None:
+        fake_torch = types.SimpleNamespace(
+            __version__="2.11.0-test", version=types.SimpleNamespace(cuda="12.8"),
+            cuda=types.SimpleNamespace(
+                is_available=lambda: True,
+                current_device=lambda: 0,
+                get_device_name=lambda _index: "Tesla T4",
+                get_device_properties=lambda _index: types.SimpleNamespace(total_memory=15 * 1024**3),
+            ),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            config = load_config(DEFAULT_CONFIG)
+            config.update(storage_mode="ephemeral", ephemeral_root=temporary, install_flux=False)
+            with patch.dict("sys.modules", {"torch": fake_torch}), patch.dict(
+                os.environ, {"012S_STORAGE_MODE": "ephemeral", "012S_STORAGE_ROOT": ""}
+            ), patch("scripts.environment_check._nvidia_smi_info", return_value={}), patch(
+                "scripts.drive_manager.is_drive_connected", side_effect=AssertionError("Drive must not be checked")
+            ):
+                report = detect_environment(config)
+        self.assertEqual(report.status, "READY")
+        self.assertEqual(report.storage_mode, "ephemeral")
+        self.assertTrue(report.storage_available)
+        self.assertIsNone(report.drive_connected)
+        self.assertIn("Drive: NOT REQUIRED", format_report(report))
+
+    def test_ephemeral_storage_missing_root_is_not_ready_but_drive_is_not_required(self) -> None:
+        fake_torch = types.SimpleNamespace(
+            __version__="2.11.0-test", version=types.SimpleNamespace(cuda="12.8"),
+            cuda=types.SimpleNamespace(is_available=lambda: True, current_device=lambda: 0,
+                                       get_device_name=lambda _index: "Tesla T4",
+                                       get_device_properties=lambda _index: types.SimpleNamespace(total_memory=15 * 1024**3)),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            config = load_config(DEFAULT_CONFIG)
+            config.update(storage_mode="ephemeral", ephemeral_root=str(Path(temporary) / "missing"))
+            with patch.dict("sys.modules", {"torch": fake_torch}), patch.dict(
+                os.environ, {"012S_STORAGE_MODE": "ephemeral", "012S_STORAGE_ROOT": ""}
+            ), patch("scripts.environment_check._nvidia_smi_info", return_value={}):
+                report = detect_environment(config)
+        self.assertEqual(report.status, "WARNING")
+        self.assertFalse(report.storage_available)
+        self.assertIsNone(report.drive_connected)
+        self.assertIn("Drive: NOT REQUIRED", format_report(report))
+
+    def test_flux_hardware_warning_is_reported_below_twenty_gib(self) -> None:
+        fake_torch = types.SimpleNamespace(
+            __version__="2.11.0-test", version=types.SimpleNamespace(cuda="12.8"),
+            cuda=types.SimpleNamespace(
+                is_available=lambda: True, current_device=lambda: 0,
+                get_device_name=lambda _index: "Tesla T4",
+                get_device_properties=lambda _index: types.SimpleNamespace(total_memory=15 * 1024**3),
+            ),
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            config = load_config(DEFAULT_CONFIG)
+            config.update(storage_mode="ephemeral", ephemeral_root=temporary, install_flux=True)
+            with patch.dict("sys.modules", {"torch": fake_torch}), patch.dict(
+                os.environ, {"012S_STORAGE_MODE": "ephemeral", "012S_STORAGE_ROOT": ""}
+            ), patch("scripts.environment_check._nvidia_smi_info", return_value={}):
+                report = detect_environment(config)
+        self.assertEqual(report.status, "READY")
+        self.assertTrue(any("FLUX HARDWARE WARNING" in warning for warning in report.warnings))
 
     def test_no_gpu_is_reported_as_warning(self) -> None:
         fake_torch = types.SimpleNamespace(
@@ -72,6 +140,32 @@ class DriveTests(unittest.TestCase):
             self.assertEqual(len(first_created), len(LAYOUT))
             self.assertEqual(second_created, [])
             self.assertTrue((root / "outputs" / "final").is_dir())
+
+    def test_storage_root_resolves_drive_and_ephemeral_modes(self) -> None:
+        config = load_config(DEFAULT_CONFIG)
+        self.assertEqual(get_storage_mode(config), "drive")
+        self.assertEqual(get_storage_root(config), Path(config["drive_root"]))
+        config["storage_mode"] = "ephemeral"
+        self.assertEqual(get_storage_mode(config), "ephemeral")
+        self.assertEqual(get_storage_root(config), Path(config["ephemeral_root"]))
+
+    def test_runtime_environment_overrides_model_switches(self) -> None:
+        with patch.dict(os.environ, {
+            "012S_STORAGE_MODE": "ephemeral",
+            "012S_INSTALL_FLUX": "false",
+            "012S_INSTALL_SDXL": "true",
+        }):
+            config = load_config(DEFAULT_CONFIG)
+        self.assertEqual(config["storage_mode"], "ephemeral")
+        self.assertFalse(config["install_flux"])
+        self.assertTrue(config["install_sdxl"])
+
+    def test_storage_layout_contains_all_runtime_roots(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary) / "ephemeral"
+            ensure_storage_layout(root)
+        for directory in ("models", "outputs", "metadata", "logs", "assets", "workflows", "prompts"):
+            self.assertIn(directory, {part.split("/", 1)[0] for part in LAYOUT})
 
     def test_template_sync_updates_managed_files_and_keeps_user_edits(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -151,6 +245,25 @@ class MetadataAndOutputTests(unittest.TestCase):
             )
             self.assertTrue(image.exists())
             self.assertEqual(json.loads(sidecar.read_text(encoding="utf-8")), metadata)
+            self.assertEqual(image.parent, root / "outputs" / "draft")
+            self.assertEqual(sidecar, image.with_suffix(".json"))
+
+    def test_ephemeral_output_and_metadata_paths_share_storage_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            config = load_config(DEFAULT_CONFIG)
+            config.update(storage_mode="ephemeral", ephemeral_root=str(Path(temporary) / "012s-runtime"))
+            root = get_storage_root(config)
+            ensure_storage_layout(root)
+            source = Path(temporary) / "comfy.png"
+            source.write_bytes(b"fake png data")
+            image, sidecar = write_output_bundle(
+                source, root, product="image", workflow="text-to-image-sdxl", seed=123,
+                metadata={"seed": 123}, category="draft",
+            )
+            self.assertEqual(image.parent, root / "outputs" / "draft")
+            self.assertEqual(sidecar, image.with_suffix(".json"))
+            self.assertTrue(image.is_file())
+            self.assertTrue(sidecar.is_file())
 
 
 class WorkflowTests(unittest.TestCase):
@@ -161,7 +274,10 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(parameterized["5"]["inputs"]["seed"], 77)
         self.assertEqual(parameterized["4"]["inputs"]["width"], 1536)
         self.assertNotEqual(graph["2"]["inputs"]["text"], "Test prompt")
-        self.assertEqual(len(load_registry()["workflows"]), 6)
+        self.assertEqual(len(load_registry()["workflows"]), 7)
+        sdxl_descriptor, sdxl_graph = get_workflow("text-to-image-sdxl")
+        self.assertTrue(sdxl_descriptor["runtime_smoke_only"])
+        self.assertEqual(sdxl_graph["1"]["inputs"]["ckpt_name"], "sd_xl_base_1.0.safetensors")
 
     def test_all_registry_parameter_mappings_point_to_graph_inputs(self) -> None:
         for workflow_id in load_registry()["workflows"]:

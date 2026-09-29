@@ -10,10 +10,10 @@ from typing import Any
 
 try:
     from .common import DEFAULT_CONFIG, PROJECT_ROOT, load_config
-    from .drive_manager import get_drive_root, sync_workflow_templates
+    from .drive_manager import get_storage_root, sync_workflow_templates
 except ImportError:
     from common import DEFAULT_CONFIG, PROJECT_ROOT, load_config
-    from drive_manager import get_drive_root, sync_workflow_templates
+    from drive_manager import get_storage_root, sync_workflow_templates
 
 
 REGISTRY_PATH = PROJECT_ROOT / "workflows" / "registry.json"
@@ -72,14 +72,14 @@ def apply_parameters(graph: dict[str, Any], descriptor: dict[str, Any], paramete
     return result
 
 
-def install_workflows(drive_root: str | Path, *, project_root: str | Path = PROJECT_ROOT) -> list[Path]:
-    return sync_workflow_templates(project_root, drive_root)
+def install_workflows(storage_root: str | Path, *, project_root: str | Path = PROJECT_ROOT) -> list[Path]:
+    return sync_workflow_templates(project_root, storage_root)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    parser.add_argument("--drive-root")
+    parser.add_argument("--storage-root", "--drive-root", dest="storage_root")
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--sync", action="store_true")
     args = parser.parse_args()
@@ -89,9 +89,9 @@ def main() -> int:
             print(f"{workflow_id}: {entry['title']} [{entry['model']}]")
     if args.sync:
         config = load_config(args.config)
-        drive_root = get_drive_root(config, args.drive_root)
-        copied = install_workflows(drive_root)
-        print(f"Workflow/prompt files ready in Drive: {len(copied)} copied, existing files preserved.")
+        storage_root = get_storage_root(config, args.storage_root)
+        copied = install_workflows(storage_root)
+        print(f"Workflow/prompt files ready in {storage_root}: {len(copied)} copied, existing files preserved.")
     return 0
 
 

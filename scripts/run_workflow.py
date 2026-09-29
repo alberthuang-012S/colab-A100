@@ -1,4 +1,4 @@
-"""Submit a named workflow to ComfyUI and archive images plus metadata on Drive."""
+"""Submit a named workflow to ComfyUI and archive images plus metadata in storage."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from typing import Any
 
 try:
     from .common import DEFAULT_CONFIG, PROJECT_ROOT, load_config, setup_logging
-    from .drive_manager import ensure_drive_layout, get_drive_root
+    from .drive_manager import ensure_storage_layout, get_storage_root
     from .environment_check import detect_environment
     from .image_utils import png_dimensions, png_has_transparency, prepare_product_canvas
     from .metadata_manager import build_metadata
@@ -27,7 +27,7 @@ try:
     from .workflow_manager import WorkflowError, apply_parameters, get_workflow
 except ImportError:
     from common import DEFAULT_CONFIG, PROJECT_ROOT, load_config, setup_logging
-    from drive_manager import ensure_drive_layout, get_drive_root
+    from drive_manager import ensure_storage_layout, get_storage_root
     from environment_check import detect_environment
     from image_utils import png_dimensions, png_has_transparency, prepare_product_canvas
     from metadata_manager import build_metadata
@@ -110,10 +110,10 @@ def copy_input_to_comfy(source: str | Path, comfy_input: str | Path, target_name
 
 
 def load_product_style(project_root: str | Path = PROJECT_ROOT,
-                       drive_root: str | Path | None = None) -> str:
+                       storage_root: str | Path | None = None) -> str:
     candidates = []
-    if drive_root:
-        candidates.append(Path(drive_root) / "prompts" / "styles" / "012s-premium-product.txt")
+    if storage_root:
+        candidates.append(Path(storage_root) / "prompts" / "styles" / "012s-premium-product.txt")
     candidates.append(Path(project_root) / "prompts" / "styles" / "012s-premium-product.txt")
     for path in candidates:
         if path.exists():
@@ -150,22 +150,22 @@ def main() -> int:
     parser.add_argument("--count", type=int, default=1, choices=(1, 4, 8, 16))
     parser.add_argument("--category", choices=("draft", "selected", "final"), default="draft")
     parser.add_argument("--api-url", default=None)
-    parser.add_argument("--drive-root")
+    parser.add_argument("--storage-root", "--drive-root", dest="storage_root")
     parser.add_argument("--comfyui-dir")
     parser.add_argument("--timeout", type=int, default=1800)
     parser.add_argument("--no-brand-style", action="store_true")
     args = parser.parse_args()
 
     config = load_config(args.config)
-    drive_root = get_drive_root(config, args.drive_root)
-    ensure_drive_layout(drive_root)
-    logger = setup_logging(drive_root / "logs")
+    storage_root = get_storage_root(config, args.storage_root)
+    ensure_storage_layout(storage_root)
+    logger = setup_logging(storage_root / "logs")
     workflow_version = str(config.get("workflow_version", "1.0.0"))
     try:
-        drive_registry = drive_root / "workflows" / "registry.json"
-        if drive_registry.is_file():
+        storage_registry = storage_root / "workflows" / "registry.json"
+        if storage_registry.is_file():
             descriptor, base_graph = get_workflow(
-                args.workflow, registry_path=drive_registry, project_root=drive_root,
+                args.workflow, registry_path=storage_registry, project_root=storage_root,
             )
         else:
             descriptor, base_graph = get_workflow(args.workflow)
@@ -184,7 +184,7 @@ def main() -> int:
             negative_node = descriptor.get("nodes", {}).get("negative_prompt")
             negative_text = base_graph[negative_node["id"]]["inputs"][negative_node["input"]] if negative_node else ""
         if args.workflow in {"product-kv", "batch"} and not args.no_brand_style:
-            style = load_product_style(PROJECT_ROOT, drive_root)
+            style = load_product_style(PROJECT_ROOT, storage_root)
             style = style.replace(
                 "Product is the clear hero.",
                 "The separately composited source product is the clear hero.",
@@ -238,7 +238,9 @@ def main() -> int:
         client = ComfyClient(api_url)
         # /system_stats is a quick reachability check before queuing work.
         client._request("/system_stats")
-        report = detect_environment(config, drive_root)
+        report = detect_environment(config, storage_root)
+        if report.status != "READY":
+            raise WorkflowError("Environment is not READY; check GPU/CUDA and the selected storage root before generation.")
         gpu_name = report.gpu_name or "Unknown / not detected"
         product_name = args.product_name or (Path(args.input_image).stem if args.input_image else "image")
         outputs: list[tuple[Path, Path]] = []
@@ -250,8 +252,8 @@ def main() -> int:
                 "width": args.width,
                 "height": args.height,
                 "seed": seed,
-                "steps": args.steps,
-                "guidance": args.guidance,
+                "steps": args.steps if args.steps is not None else descriptor.get("default_steps"),
+                "guidance": args.guidance if args.guidance is not None else descriptor.get("default_guidance"),
                 "denoise": args.denoise,
             }
             for key, image_path in input_paths.items():
@@ -272,8 +274,8 @@ def main() -> int:
                         model=descriptor["model"], model_version=descriptor.get("model_revision", descriptor["model_filename"]),
                         workflow=args.workflow, workflow_version=workflow_version,
                         width=width, height=height,
-                        steps=args.steps or (4 if "FLUX" in descriptor["model"] else 30),
-                        guidance=args.guidance if args.guidance is not None else (1.0 if "FLUX" in descriptor["model"] else 6.0),
+                        steps=args.steps if args.steps is not None else descriptor.get("default_steps", 4 if "FLUX" in descriptor["model"] else 30),
+                        guidance=args.guidance if args.guidance is not None else descriptor.get("default_guidance", 1.0 if "FLUX" in descriptor["model"] else 6.0),
                         sampler=descriptor.get("sampler"), scheduler=descriptor.get("scheduler"),
                         gpu=gpu_name, timezone_name=str(config.get("timezone", "Asia/Taipei")),
                         extra={
@@ -290,7 +292,7 @@ def main() -> int:
                         },
                     )
                     output, sidecar = write_output_bundle(
-                        temp_image, drive_root, product=product_name,
+                        temp_image, storage_root, product=product_name,
                         workflow=args.workflow, seed=seed, metadata=metadata,
                         category=args.category,
                     )

@@ -6,6 +6,8 @@
   "drive_folder_name": "012s-image-system",
   "drive_mount_point": "/content/drive",
   "drive_root": "/content/drive/MyDrive/012s-image-system",
+  "storage_mode": "drive",
+  "ephemeral_root": "/content/012s-runtime",
   "comfyui_dir": "/content/ComfyUI",
   "comfyui_repo_url": "https://github.com/Comfy-Org/ComfyUI.git",
   "comfyui_host": "0.0.0.0",

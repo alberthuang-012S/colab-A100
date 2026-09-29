@@ -1,4 +1,4 @@
-"""Output naming and Drive archival helpers."""
+"""Output naming and storage archival helpers."""
 
 from __future__ import annotations
 
@@ -23,12 +23,12 @@ def make_output_filename(product: str, workflow: str, seed: int, *, date: str | 
     return f"{slugify(product)}_{slugify(workflow)}_{date_part}_seed{int(seed)}{extension}"
 
 
-def write_output_bundle(source_image: str | Path, drive_root: str | Path, *, product: str,
+def write_output_bundle(source_image: str | Path, storage_root: str | Path, *, product: str,
                         workflow: str, seed: int, metadata: dict[str, Any],
                         category: str = "draft") -> tuple[Path, Path]:
     if category not in {"draft", "selected", "final"}:
         raise ValueError(f"Unsupported output category: {category}")
-    directory = Path(drive_root) / "outputs" / category
+    directory = Path(storage_root) / "outputs" / category
     directory.mkdir(parents=True, exist_ok=True)
     filename = make_output_filename(product, workflow, seed, date=str(metadata.get("date", "")) or None)
     destination = directory / filename

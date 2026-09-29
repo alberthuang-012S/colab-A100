@@ -2,9 +2,9 @@
 
 ## Components
 
-- `012S_Image_System.ipynb` is the Colab launcher. It mounts Drive, checks hardware, calls the setup modules in order, starts ComfyUI, and exposes the Colab proxy URL.
-- `scripts/environment_check.py` reports Python, PyTorch, CUDA, GPU model, VRAM, and Drive state. Its status is `READY` only when CUDA is usable and Drive is mounted.
-- `scripts/drive_manager.py` creates the project folder layout and writes ComfyUI's additional model search paths.
+- `012S_Image_System.ipynb` is the Colab launcher. It clones the project before storage setup, selects Drive or ephemeral storage, checks hardware, starts ComfyUI, and exposes the Colab proxy URL.
+- `scripts/environment_check.py` reports Python, PyTorch, CUDA, GPU model, VRAM, storage mode/root, and Drive state. Its status is `READY` when CUDA and the selected storage are usable; ephemeral mode reports Drive as `NOT REQUIRED`.
+- `scripts/drive_manager.py` resolves the shared storage root, creates its layout, handles optional Drive mounting, and writes ComfyUI's additional model search paths.
 - `scripts/model_manager.py` checks selected files, skips valid files, resumes interrupted downloads, validates minimum size and optional SHA-256, and reports authentication failures.
 - `scripts/comfy_manager.py` clones or fast-forwards ComfyUI, installs its requirements, and starts the server.
 - `scripts/workflow_manager.py` validates the workflow registry, prepares API graphs, and syncs graph/prompt files to Drive.
@@ -13,9 +13,9 @@
 
 ## Persistent data and runtime data
 
-Drive stores model files, assets, prompts, workflows, outputs, logs, and sidecars. The Colab runtime stores the ComfyUI checkout, Python dependencies, and temporary input/output files. On a fresh runtime, setup updates ComfyUI and points it at the existing Drive model folders instead of downloading valid models again.
+By default Drive stores model files, assets, prompts, workflows, outputs, logs, and sidecars. Ephemeral mode uses the same layout at `/content/012s-runtime`, which is removed with the runtime. The project checkout remains at `/content/012s-image-system` in either mode. ComfyUI points at model folders under the selected storage root.
 
-ComfyUI discovers Drive models through `ComfyUI/extra_model_paths.yaml`; model files do not need to be copied to the runtime. Category switches live in `config/system_config.json` (`install_flux`, `install_sdxl`). FLUX is selected by default and SDXL is opt-in.
+ComfyUI discovers models through `ComfyUI/extra_model_paths.yaml`; model files do not need to be copied to the runtime. Category switches live in `config/system_config.json` (`install_flux`, `install_sdxl`). FLUX is selected by default and SDXL is opt-in. The `text-to-image-sdxl` graph is for runtime smoke tests; the default remains FLUX.1-schnell FP8.
 
 ## Workflow execution
 

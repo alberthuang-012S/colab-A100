@@ -20,7 +20,33 @@
       "sampler": "euler",
       "scheduler": "simple",
       "input_files": {},
-      "supports_negative_prompt": false
+      "supports_negative_prompt": false,
+      "default_steps": 4,
+      "default_guidance": 1.0
+    },
+    "text-to-image-sdxl": {
+      "title": "Text to Image (SDXL Base 1.0 — runtime smoke)",
+      "category": "text-to-image",
+      "api_file": "text-to-image/sdxl-base.json",
+      "model": "Stable Diffusion XL 1.0 base",
+      "model_filename": "sd_xl_base_1.0.safetensors",
+      "model_revision": "ce8cd4d6569112b0c0ad48cdd18560fe0bcc7a48",
+      "nodes": {
+        "prompt": {"id": "2", "input": "text"},
+        "negative_prompt": {"id": "3", "input": "text"},
+        "width": {"id": "4", "input": "width"},
+        "height": {"id": "4", "input": "height"},
+        "seed": {"id": "5", "input": "seed"},
+        "steps": {"id": "5", "input": "steps"},
+        "guidance": {"id": "5", "input": "cfg"}
+      },
+      "sampler": "euler",
+      "scheduler": "normal",
+      "input_files": {},
+      "supports_negative_prompt": true,
+      "default_steps": 12,
+      "default_guidance": 6.0,
+      "runtime_smoke_only": true
     },
     "product-kv": {
       "title": "Product Key Visual (transparent product composite)",

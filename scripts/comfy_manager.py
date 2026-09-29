@@ -1,4 +1,4 @@
-"""Clone/update ComfyUI, install its requirements, configure Drive models, and launch."""
+"""Clone/update ComfyUI, install its requirements, configure model paths, and launch."""
 
 from __future__ import annotations
 
@@ -13,10 +13,10 @@ from typing import Any
 
 try:
     from .common import DEFAULT_CONFIG, load_config, log_exception_summary, setup_logging
-    from .drive_manager import get_drive_root, install_extra_model_paths
+    from .drive_manager import get_storage_root, install_extra_model_paths
 except ImportError:
     from common import DEFAULT_CONFIG, load_config, log_exception_summary, setup_logging
-    from drive_manager import get_drive_root, install_extra_model_paths
+    from drive_manager import get_storage_root, install_extra_model_paths
 
 
 class ComfySetupError(RuntimeError):
@@ -52,12 +52,12 @@ def install_requirements(comfyui_dir: str | Path, python_executable: str = sys.e
         logger.info("ComfyUI dependencies installed from %s", requirements)
 
 
-def prepare_comfyui(config: dict[str, Any], drive_root: str | Path, *, skip_dependencies: bool = False,
+def prepare_comfyui(config: dict[str, Any], storage_root: str | Path, *, skip_dependencies: bool = False,
                     logger: Any = None) -> Path:
     comfy = ensure_comfyui_repo(
         str(config["comfyui_repo_url"]), config.get("comfyui_dir", "/content/ComfyUI"), logger,
     )
-    install_extra_model_paths(comfy, drive_root)
+    install_extra_model_paths(comfy, storage_root)
     (comfy / "custom_nodes").mkdir(parents=True, exist_ok=True)
     if not skip_dependencies:
         install_requirements(comfy, logger=logger)
@@ -86,12 +86,12 @@ def launch_comfyui(comfyui_dir: str | Path, config: dict[str, Any], *, backgroun
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    parser.add_argument("--drive-root")
+    parser.add_argument("--storage-root", "--drive-root", dest="storage_root")
     parser.add_argument("--skip-dependencies", action="store_true")
     parser.add_argument("--foreground", action="store_true")
     args = parser.parse_args()
     config = load_config(args.config)
-    root = get_drive_root(config, args.drive_root)
+    root = get_storage_root(config, args.storage_root)
     logger = setup_logging(root / "logs")
     try:
         comfy = prepare_comfyui(config, root, skip_dependencies=args.skip_dependencies, logger=logger)

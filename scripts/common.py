@@ -19,6 +19,16 @@ def load_config(path: str | Path | None = None) -> dict[str, Any]:
         config = json.load(handle)
     if not isinstance(config, dict):
         raise ValueError(f"Configuration must be a JSON object: {config_path}")
+    storage_mode = os.environ.get("012S_STORAGE_MODE")
+    if storage_mode:
+        config["storage_mode"] = storage_mode
+    for key in ("install_flux", "install_sdxl"):
+        raw = os.environ.get(f"012S_{key.upper()}")
+        if raw is not None:
+            normalized = raw.strip().lower()
+            if normalized not in {"1", "true", "yes", "on", "0", "false", "no", "off"}:
+                raise ValueError(f"012S_{key.upper()} must be a boolean value")
+            config[key] = normalized in {"1", "true", "yes", "on"}
     return config
 
 

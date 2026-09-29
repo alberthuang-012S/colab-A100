@@ -26,16 +26,42 @@ LAYOUT = (
 )
 
 
-def get_drive_root(config: dict[str, Any], override: str | Path | None = None) -> Path:
+STORAGE_MODES = {"drive", "ephemeral"}
+
+
+def get_storage_mode(config: dict[str, Any], override: str | None = None) -> str:
+    """Return the configured storage mode, with a per-runtime environment override."""
+    mode = override or os.environ.get("012S_STORAGE_MODE") or config.get("storage_mode", "drive")
+    normalized = str(mode).strip().lower()
+    if normalized not in STORAGE_MODES:
+        raise ValueError(f"Unsupported storage_mode {mode!r}; choose 'drive' or 'ephemeral'.")
+    return normalized
+
+
+def get_storage_root(config: dict[str, Any], override: str | Path | None = None,
+                     *, storage_mode: str | None = None) -> Path:
+    """Resolve the one shared root used for models, outputs, metadata, logs, and assets."""
     if override:
         return Path(override).expanduser()
-    env_override = os.environ.get("012S_DRIVE_ROOT")
+    mode = get_storage_mode(config, storage_mode)
+    env_override = os.environ.get("012S_STORAGE_ROOT")
     if env_override:
         return Path(env_override).expanduser()
+    if mode == "ephemeral":
+        return Path(os.environ.get("012S_EPHEMERAL_ROOT", config.get("ephemeral_root", "/content/012s-runtime"))).expanduser()
+    legacy_override = os.environ.get("012S_DRIVE_ROOT")
+    if legacy_override:
+        return Path(legacy_override).expanduser()
     return Path(config.get("drive_root", "/content/drive/MyDrive/012s-image-system")).expanduser()
 
 
+def get_drive_root(config: dict[str, Any], override: str | Path | None = None) -> Path:
+    """Backward-compatible resolver for callers that explicitly need the Drive root."""
+    return get_storage_root(config, override, storage_mode="drive")
+
+
 def is_drive_connected(config: dict[str, Any], root: str | Path | None = None) -> bool:
+    """Check the Drive mount itself (ephemeral storage must not call this)."""
     mount_point = Path(config.get("drive_mount_point", "/content/drive"))
     if os.environ.get("COLAB_RELEASE_TAG"):
         return mount_point.exists() and (mount_point / "MyDrive").exists()
@@ -54,7 +80,8 @@ def mount_google_drive() -> bool:
     return True
 
 
-def ensure_drive_layout(root: str | Path) -> list[Path]:
+def ensure_storage_layout(root: str | Path) -> list[Path]:
+    """Create the shared data layout under either persistent or ephemeral storage."""
     base = Path(root).expanduser()
     created: list[Path] = []
     for relative in LAYOUT:
@@ -66,10 +93,26 @@ def ensure_drive_layout(root: str | Path) -> list[Path]:
     return created
 
 
-def install_extra_model_paths(comfyui_dir: str | Path, drive_root: str | Path) -> Path:
-    """Point ComfyUI model categories at persistent Drive folders."""
+def ensure_drive_layout(root: str | Path) -> list[Path]:
+    """Backward-compatible name for the shared storage layout initializer."""
+    return ensure_storage_layout(root)
+
+
+def is_storage_available(config: dict[str, Any], root: str | Path,
+                         storage_mode: str | None = None) -> bool:
+    mode = get_storage_mode(config, storage_mode)
+    selected_root = Path(root).expanduser()
+    if not selected_root.is_dir() or not os.access(selected_root, os.W_OK):
+        return False
+    if mode == "ephemeral":
+        return True
+    return is_drive_connected(config, selected_root)
+
+
+def install_extra_model_paths(comfyui_dir: str | Path, storage_root: str | Path) -> Path:
+    """Point ComfyUI model categories at the selected storage folders."""
     comfy = Path(comfyui_dir)
-    models = (Path(drive_root) / "models").resolve()
+    models = (Path(storage_root) / "models").resolve()
     content = (
         "012S Flux:\n"
         f"  base_path: {models.as_posix()}\n"
@@ -88,10 +131,10 @@ def install_extra_model_paths(comfyui_dir: str | Path, drive_root: str | Path) -
     return destination
 
 
-def sync_workflow_templates(project_root: str | Path, drive_root: str | Path) -> list[Path]:
+def sync_workflow_templates(project_root: str | Path, storage_root: str | Path) -> list[Path]:
     """Sync checked-in workflow/prompt templates without overwriting user edits."""
     source_root = Path(project_root)
-    target_root = Path(drive_root)
+    target_root = Path(storage_root)
     synced: list[Path] = []
     manifest_path = target_root / "metadata" / "workflow_templates_manifest.json"
     try:
@@ -147,25 +190,27 @@ def main() -> int:
     parser.add_argument("--mount", action="store_true", help="Mount Google Drive when running in Colab")
     args = parser.parse_args()
     config = load_config(args.config)
-    root = get_drive_root(config, args.root)
+    root = get_storage_root(config, args.root)
     logger = setup_logging(root / "logs")
     try:
-        connected = mount_google_drive() if args.mount else is_drive_connected(config, root)
-        if args.mount and not connected:
-            connected = is_drive_connected(config, root)
+        mode = get_storage_mode(config)
+        if args.mount and mode == "drive":
+            mount_google_drive()
+        connected = is_storage_available(config, root, mode)
         if not connected:
-            print("Drive: NOT CONNECTED. In Colab, run the Drive mount cell and retry.")
-            logger.warning("Drive is not connected at %s", root)
+            print(f"Storage: NOT AVAILABLE ({mode}) at {root}")
+            logger.warning("Storage is not available at %s", root)
             return 2
-        created = ensure_drive_layout(root)
-        logger.info("Drive folders ready at %s (%s new folders)", root, len(created))
-        print(f"Drive: Connected\nProject root: {root}\nFolders created: {len(created)}")
+        created = ensure_storage_layout(root)
+        logger.info("Storage folders ready at %s (%s new folders)", root, len(created))
+        drive_state = "NOT REQUIRED" if mode == "ephemeral" else "Connected"
+        print(f"Storage Mode: {mode}\nStorage Root: {root}\nDrive: {drive_state}\nFolders created: {len(created)}")
         return 0
     except Exception as error:  # noqa: BLE001 - report a concise recovery path to Colab users.
         logger.exception("Drive setup failed")
-        print(f"ERROR SUMMARY: Could not prepare Google Drive folders: {error}")
-        print("POSSIBLE CAUSE: Drive is not mounted or the account has not granted access.")
-        print("RECOMMENDED ACTION: Rerun the notebook Drive mount cell, then run this step again.")
+        print(f"ERROR SUMMARY: Could not prepare storage folders: {error}")
+        print("POSSIBLE CAUSE: The selected storage root is unavailable or not writable.")
+        print("RECOMMENDED ACTION: Check Storage Mode and Storage Root, then rerun this step.")
         return 2
 
 

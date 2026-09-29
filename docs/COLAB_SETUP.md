@@ -2,22 +2,24 @@
 
 ## Before starting
 
-The notebook assumes a Google Colab GPU runtime and a Google account with Drive access. Select A100 when available. FLUX.1-schnell is enabled in the checked-in configuration; SDXL is optional. Models are large, so allow time for the initial selected model download and keep enough Drive quota free.
+The notebook assumes a Google Colab GPU runtime. Select A100 when available. `storage_mode` defaults to `drive`; SDXL is optional and FLUX.1-schnell is enabled in the checked-in configuration. Models are large, so allow time for selected model downloads.
 
 ## Launch steps
 
 1. Open `012S_Image_System.ipynb` in Colab and choose **Runtime → Change runtime type → GPU**.
-2. Run cells from the top. The first cell mounts Drive, creates the 012S Drive layout, and checks whether project scripts are already present.
-3. If scripts are absent, the notebook clones `https://github.com/alberthuang-012S/colab-A100.git` and saves the URL without credentials in the Drive metadata folder, so a fresh runtime can clone again. To use a fork, set `012S_REPOSITORY_URL` before running the cell. For private source repositories, use your existing Git credentials or an approved repository access method.
-4. Read the Environment Report. If status is not `READY`, stop and select a GPU runtime or reconnect Drive before continuing.
+2. Run cells from the top. Step 1 clones/updates the project in `/content/012s-image-system` before setting up storage.
+3. The default `drive` mode mounts Drive and uses `/content/drive/MyDrive/012s-image-system`. Set `STORAGE_MODE_OVERRIDE = 'ephemeral'` in Step 1 for `/content/012s-runtime`; this skips Drive mount entirely. To use a fork, set `012S_REPOSITORY_URL` before running Step 1. Never put credentials in the URL.
+4. Read the Environment Report. It shows GPU, CUDA, PyTorch, Storage Mode, Storage Root, and Drive. Drive is `NOT REQUIRED` in ephemeral mode. `READY` requires a CUDA-capable GPU and a usable storage root.
 5. ComfyUI is cloned on a fresh runtime or fast-forwarded when its checkout exists. Dependencies are installed for that runtime.
 6. Review model switches in `config/system_config.json`. The model check prints whether each selected checkpoint is already present. The next cell downloads only missing/invalid selected files.
-7. For Hugging Face authentication, add a Colab Secret named `HF_TOKEN`. The notebook exposes it to the downloader without printing or saving the token. A public model usually needs no token; gated access may also require accepting the model terms in Hugging Face first.
-8. The remaining cells configure Drive model paths, sync workflows, start ComfyUI, and display its proxy URL.
+7. Public model downloads may need no token. If authentication is required, accept the model terms and configure `HF_TOKEN` explicitly; the notebook does not read Colab Secrets automatically.
+8. The remaining cells configure model paths from the selected storage root, sync workflows, start ComfyUI, and display its proxy URL.
+
+For a T4 pipeline smoke test, use Step 1 overrides `STORAGE_MODE_OVERRIDE = 'ephemeral'`, `INSTALL_FLUX_OVERRIDE = False`, and `INSTALL_SDXL_OVERRIDE = True`; then run the `text-to-image-sdxl` workflow at 1024×1024. This is not FLUX-on-A100 verification.
 
 ## Restarting a runtime
 
-Mount Drive and rerun the notebook. The Drive folders and valid model files are kept. ComfyUI and its dependencies are prepared on the new runtime; model downloads are skipped when files pass validation.
+In Drive mode, rerun the notebook to reuse persistent model files and outputs. Ephemeral files are deleted when the runtime ends.
 
 ## Stop the runtime
 

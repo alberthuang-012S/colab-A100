@@ -15,10 +15,10 @@ from typing import Any
 
 try:
     from .common import DEFAULT_CONFIG, load_config, log_exception_summary, setup_logging
-    from .drive_manager import ensure_drive_layout, get_drive_root
+    from .drive_manager import ensure_storage_layout, get_storage_root
 except ImportError:
     from common import DEFAULT_CONFIG, load_config, log_exception_summary, setup_logging
-    from drive_manager import ensure_drive_layout, get_drive_root
+    from drive_manager import ensure_storage_layout, get_storage_root
 
 
 class AuthRequiredError(RuntimeError):
@@ -152,10 +152,10 @@ def selected_models(config: dict[str, Any], *, install_flux: bool | None = None,
     return {name: models.get(name, []) for name, enabled in (("flux", flux), ("sdxl", sdxl)) if enabled}
 
 
-def sync_models(config: dict[str, Any], drive_root: str | Path, *, install_flux: bool | None = None,
+def sync_models(config: dict[str, Any], storage_root: str | Path, *, install_flux: bool | None = None,
                 install_sdxl: bool | None = None, logger: Any = None) -> ModelSyncReport:
-    root = Path(drive_root)
-    ensure_drive_layout(root)
+    root = Path(storage_root)
+    ensure_storage_layout(root)
     report = ModelSyncReport()
     selections = selected_models(config, install_flux=install_flux, install_sdxl=install_sdxl)
     if not selections:
@@ -226,14 +226,14 @@ def sync_models(config: dict[str, Any], drive_root: str | Path, *, install_flux:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", default=str(DEFAULT_CONFIG))
-    parser.add_argument("--drive-root")
+    parser.add_argument("--storage-root", "--drive-root", dest="storage_root")
     parser.add_argument("--install-flux", action="store_true", default=None)
     parser.add_argument("--skip-flux", action="store_true")
     parser.add_argument("--install-sdxl", action="store_true", default=None)
     parser.add_argument("--skip-sdxl", action="store_true")
     args = parser.parse_args()
     config = load_config(args.config)
-    root = get_drive_root(config, args.drive_root)
+    root = get_storage_root(config, args.storage_root)
     logger = setup_logging(root / "logs")
     report = sync_models(
         config, root,

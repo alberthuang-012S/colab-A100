@@ -5,6 +5,9 @@
 - **GPU not detected:** select a Colab GPU runtime and rerun the environment cell. The launcher stops before downloading models.
 - **GPU detected but PyTorch CUDA is unavailable:** restart the runtime after selecting GPU. Check the PyTorch version and CUDA entry in the Environment Report.
 - **Drive not connected:** rerun the Drive mount cell and approve access. Confirm that `MyDrive/012s-image-system/` is reachable.
+- **`credential propagation was unsuccessful`:** confirm that all required permissions shown by Google's authorization dialog were approved. Do not bypass OAuth or save Google credentials. If organization policy does not allow those permissions, set `STORAGE_MODE_OVERRIDE = 'ephemeral'` in Notebook Step 1; Drive will not be mounted.
+- **Ephemeral files missing after reconnect:** expected. `/content/012s-runtime/` is runtime-local and is deleted when the Colab runtime ends. Use Drive mode for persistent models and outputs.
+- **FLUX HARDWARE WARNING:** FLUX is selected but detected GPU VRAM is below 20 GB. Use an A100-class runtime for FLUX verification; an SDXL T4 generation checks the pipeline only.
 
 ## Model reports AUTH REQUIRED
 
